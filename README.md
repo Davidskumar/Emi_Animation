@@ -1,5 +1,7 @@
 # Emi_Animation
-Basic Animations on Unity Engine
+
+Basic Animations (Walking, Running, Crouching, Burpee, Attack, Taking Damage) on Unity Engine.
+
 
 Steps:
 -------
