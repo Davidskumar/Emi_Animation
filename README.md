@@ -3,7 +3,7 @@ Basic Animations on Unity Engine
 
 Steps:
 -------
-Follow the instructions in the GeneralStepsDoc.doc file
+Follow the instructions in the GeneralStepsDoc.docx file
 
 ## Softwares used:
 Mixamo:For rigging and animation.(Link: https://www.mixamo.com)
