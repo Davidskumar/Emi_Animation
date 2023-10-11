@@ -1,0 +1,372 @@
+# Unity3D Implementation Guide
+
+## Getting Started
+### Creating a New Project
+1. Launch Unity.
+2. Click on "New."
+3. Choose a project name and location.
+4. Select the 3D template based on your project's requirements.
+5. Click "Create."
+
+## Requirements:-
+###Character Requirements:
+-Animator
+-Bone Renderer
+-Character Controller
+-Thirdperson, Player Punch Script
+
+### NPCs Requirements:
+-Animator
+-Bone Renderer (only for character “Lewis”)
+-Character Controller
+-Nav Mesh Agent (only for character ”Lewis”)
+-RigidBody
+-NPC Attack Script (only for character ”Lewis”)
+-NPC Punch Script (only for character ”Joe”)
+
+### Buildings and Streets:
+-Basic Shapes with Box Colliders
+-Sphere Collider (For “Globe”)
+-Basic Textures for both Buildings and Road
+
+##Scripts:
+### PlayerManager:
+public class PlayerManager : MonoBehaviour
+{
+    #region Singleton
+    public static PlayerManager instance; // Singleton instance of the PlayerManager.
+
+    private void Awake()
+    {
+        // Ensure there is only one instance of PlayerManager.
+        if (instance == null)
+        {
+            instance = this; // Set this as the instance if none exists.
+        }
+        else if (instance != this)
+        {
+            Destroy(gameObject); // Destroy any duplicate instances.
+        }
+        
+        // Don't destroy this GameObject when loading new scenes.
+        DontDestroyOnLoad(gameObject);
+    }
+    #endregion
+
+    public GameObject player; // Reference to the player GameObject.
+}
+
+### Thirdperson:
+// Define the Thirdperson class, which inherits from MonoBehaviour
+public class Thirdperson : MonoBehaviour
+{
+    // Serialized fields that can be modified in the Unity Inspector
+    [SerializeField] private bool ground;
+    [SerializeField] private float groundcheck;
+    [SerializeField] private LayerMask groundmask;
+    [SerializeField] private float gravity;
+    private Vector3 velocity;
+    [SerializeField] private float jheight;
+
+    // Public variables for character control
+    public CharacterController controller;
+    private Animator animat;
+    public Transform came;
+    public float movespeed;
+    public float walkspeed = 6f;
+    public float runspeed = 10f;
+    public float Value = 0;
+    public int Counter = 0;
+    public int State = 0;
+    public float turnsmooth = 0.2f;
+    float turnsmoothvel;
+
+    private void Start()
+    {
+        // Initialize the 'animat' variable with the Animator component of this GameObject
+        animat = GetComponent<Animator>();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        // Check if the character is on the ground
+        ground = Physics.CheckSphere(transform.position, groundcheck, groundmask);
+        if (ground && velocity.y < 0)
+        {
+            velocity.y = -2f;
+        }
+
+        // Get input for movement
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical = Input.GetAxisRaw("Vertical");
+        Vector3 direction = new Vector3(horizontal, 0f, vertical).normalized;
+
+        // Check if the character is moving and on the ground
+        if (direction.magnitude >= 0.1f && ground)
+        {
+            // Calculate the target angle for rotation
+            float targetangle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + came.eulerAngles.y;
+            // Smoothly rotate the character towards the target angle
+            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetangle, ref turnsmoothvel, turnsmooth);
+            transform.rotation = Quaternion.Euler(0f, angle, 0f);
+
+            // Calculate the movement direction based on the target angle
+            Vector3 movedir = Quaternion.Euler(0f, targetangle, 0f) * Vector3.forward;
+
+            // Check if the 'C' key is pressed for crouching
+            if (Input.GetKey(KeyCode.C) == true && movedir != Vector3.zero)
+            {
+                Crouch();
+                controller.Move(movedir.normalized * movespeed * Time.deltaTime);
+                animat.SetInteger("State", 2);
+            }
+            else if (movedir != Vector3.zero && !Input.GetKey(KeyCode.LeftShift))
+            {
+                Walk();
+                animat.SetFloat("Speed", 0.4f);
+            }
+            else if (movedir != Vector3.zero && Input.GetKey(KeyCode.LeftShift))
+            {
+                Run();
+                animat.SetFloat("Speed", 1);
+            }
+
+            controller.Move(movedir.normalized * movespeed * Time.deltaTime);
+        }
+
+        // Check if the character is not moving
+        if (direction == Vector3.zero)
+        {
+            Idel();
+            animat.SetFloat("Speed", 0);
+            controller.Move(direction.normalized * movespeed * Time.deltaTime);
+
+            // Check if the space key is pressed for burpees
+            if (Input.GetKey("space") == true)
+            {
+                Burpee();
+                animat.SetInteger("Burp", Counter);
+            }
+            if (Input.GetKey("space") == false)
+            {
+                animat.SetInteger("Burp", 0);
+            }
+
+            // Check if the 'C' key is pressed for crouching
+            if (Input.GetKey(KeyCode.C) == true)
+            {
+                Crouch();
+                animat.SetInteger("State", State);
+            }
+            else if (Input.GetKey(KeyCode.C) == false)
+            {
+                animat.SetInteger("State", 0);
+                controller.height = 2f;
+            }
+            if(Input.GetMouseButtonDown(0) == true)
+            {
+                animat.SetInteger("Punch", 1);
+            }
+            else if(Input.GetMouseButtonDown(0) == false)
+            {
+                animat.SetInteger("Punch", 0);
+            }
+        }
+
+        // Apply gravity to the character's velocity
+        velocity.y += gravity * Time.deltaTime;
+        controller.Move(velocity * Time.deltaTime);
+    }
+
+    // Method to set character state to idle
+    public void Idel()
+    {
+        Value = 0;
+    }
+
+    // Method to set character state to walking
+    public void Walk()
+    {
+        movespeed = walkspeed;
+        Value = 0.5f;
+    }
+
+    // Method to set character state to running
+    public void Run()
+    {
+        movespeed = runspeed;
+        Value = 1;
+    }
+
+    // Method to trigger burpee animation
+    public void Burpee()
+    {
+        Counter = 1;
+    }
+
+    // Method to set character state to crouching
+    public void Crouch()
+    {
+        State = 1;
+        movespeed = 5f;
+        controller.height = 1.5f;
+    }
+}
+### PlayerPunch:
+public class PlayerPunch : MonoBehaviour
+{
+    private Animator animatNPC;
+    private void Start()
+    {
+        // Initialize the 'animat' variable with the Animator component of this GameObject
+        animatNPC = GetComponent<Animator>();
+    }   
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.tag == "NPCAttack")
+        {
+            animatNPC.SetInteger("Damage",1);
+        }
+
+    }
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.gameObject.tag == "NPCAttack")
+        {
+            animatNPC.SetInteger("Damage", 0);
+        }
+    }
+}
+### NPCPunch:
+public class NPCPunch : MonoBehaviour
+{
+    [SerializeField] private bool ground;            // Boolean to check if the NPC is on the ground.
+    [SerializeField] private float groundcheck;      // Radius for ground check sphere.
+    [SerializeField] private LayerMask groundmask;   // Layer mask for ground detection.
+    [SerializeField] private float gravity;          // Gravity affecting the NPC.
+
+    private Vector3 velocity;                        // NPC's current velocity.
+    private Animator animatNPC;                      // Reference to the Animator component.
+
+    private void Start()
+    {
+        // Initialize the 'animatNPC' variable with the Animator component of this GameObject.
+        animatNPC = GetComponent<Animator>();
+    }
+
+    private void Update()
+    {
+        // Check if the NPC is on the ground by casting a sphere at its position.
+        ground = Physics.CheckSphere(transform.position, groundcheck, groundmask);
+
+        // Apply gravity to the NPC's vertical velocity.
+        if (ground && velocity.y < 0)
+        {
+            velocity.y = -2f;  // Reset the vertical velocity when on the ground.
+        }
+
+        velocity.y += gravity * Time.deltaTime;  // Apply gravity over time.
+    }
+
+    // OnTriggerEnter is called when another collider enters the NPC's trigger zone.
+    private void OnTriggerEnter(Collider other)
+    {
+        // Check if the entering collider has the "Punch" tag.
+        if (other.gameObject.tag == "Punch")
+        {
+            // Trigger the "Punched" animation state in the NPC's Animator.
+            animatNPC.SetTrigger("Punched");
+        }
+    }
+
+    // OnTriggerExit is called when another collider exits the NPC's trigger zone.
+    private void OnTriggerExit(Collider other)
+    {
+        // Check if the exiting collider has the "Punch" tag.
+        if (other.gameObject.tag == "Punch")
+        {
+            // Trigger the "Punched" animation state in the NPC's Animator.
+            animatNPC.SetTrigger("Punched");
+        }
+    }
+}
+
+### NPCAttack:
+public class NPCAttack : MonoBehaviour
+{
+    [SerializeField] private bool ground;            // Boolean to check if the NPC is on the ground.
+    [SerializeField] private float groundcheck;      // Radius for ground check sphere.
+    [SerializeField] private LayerMask groundmask;   // Layer mask for ground detection.
+    [SerializeField] private float gravity;          // Gravity affecting the NPC.
+    
+    private Vector3 velocity;                        // NPC's current velocity.
+    public float lookradius = 5f;                   // Radius for detecting the player.
+    private Animator animatNPCAttack;               // Reference to the Animator component.
+    
+    Transform target;                               // Reference to the player's transform.
+    NavMeshAgent agent;                             // Reference to the NavMeshAgent component.
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        // Get a reference to the player's transform and the NavMeshAgent component.
+        target = PlayerManager.instance.player.transform;
+        agent = GetComponent<NavMeshAgent>();
+        
+        // Initialize the 'animatNPCAttack' variable with the Animator component of this GameObject.
+        animatNPCAttack = GetComponent<Animator>();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        // Check if the NPC is on the ground by casting a sphere at its position.
+        ground = Physics.CheckSphere(transform.position, groundcheck, groundmask);
+
+        // Apply gravity to the NPC's vertical velocity.
+        if (ground && velocity.y < 0)
+        {
+            velocity.y = -2f;  // Reset the vertical velocity when on the ground.
+        }
+
+        velocity.y += gravity * Time.deltaTime;  // Apply gravity over time.
+
+        // Calculate the distance between the NPC and the player.
+        float distance = Vector3.Distance(target.position, transform.position);
+
+        // Check if the player is within the look radius.
+        if (distance <= lookradius)
+        {
+            // Set the NPC's destination to the player's position.
+            agent.SetDestination(target.position);
+            
+            // Set the integer parameter "NPCOut" in the Animator to 1 to trigger an animation.
+            animatNPCAttack.SetInteger("NPCOut", 1);
+        }
+        else if (distance > lookradius)
+        {
+            // Set the integer parameter "NPCOut" in the Animator to 0 to stop the animation.
+            animatNPCAttack.SetInteger("NPCOut", 0);
+        }
+    }
+
+    // OnDrawGizmosSelected is called when the GameObject is selected in the Unity editor.
+    void OnDrawGizmosSelected()
+    {
+        // Draw a wire sphere with a blue color to visualize the look radius.
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(transform.position, lookradius);
+    }
+}
+
+## Softwares used:
+Mixamo:For rigging and animation.(Link: https://www.mixamo.com)
+Blender: For Character creation and textures.
+VisualStudio: For scripting in C#.
+Unity: For Base development.
+
+##Demo video(Drive):
+https://drive.google.com/file/d/1_09sog-e0MchqTd7Vqjp-fST15YFNOzG/view?usp=sharing
+
