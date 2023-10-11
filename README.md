@@ -2,10 +2,13 @@
 
 Basic Animations (Walking, Running, Crouching, Burpee, Attack, Taking Damage) on Unity Engine.
 
+Demo:
+------
+![](DemoVideo/EmiAnimationsDemo.gif)
 
 Steps:
 -------
-Follow the instructions in the GeneralStepsDoc.docx file
+Follow the instructions in the [GeneralStepsDoc.docx](https://github.com/Davidskumar/Emi_Animation/blob/main/GeneralStepsDoc.docx) file. 
 
 ## Softwares used:
 Mixamo:For rigging and animation.(Link: https://www.mixamo.com)
